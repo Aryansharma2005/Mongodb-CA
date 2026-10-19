@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-7">
+        <h2 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Dashboard</h2>
+        <p class="text-muted mb-0">Overview for <strong>{{ current_month_name }}</strong></p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0 d-flex flex-wrap justify-content-md-end gap-2">
+        <a href="{% url 'transaction_create' %}" class="btn btn-success shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Add Transaction
+        </a>
+        <a href="{% url 'transactions' %}?export=csv" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+    </div>
+</div>
+
+<!-- Database Connection Notice Banner -->
+<div class="card mb-4 border-0 shadow-sm bg-body-tertiary">
+    <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+            {% if connection_status.is_mock %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-cpu"></i> In-Memory Mock</span>
+                <span class="small text-muted">Running offline fallback. Add your MongoDB Atlas connection URI to <code>.env</code> anytime.</span>
+            {% else %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Connected</span>
+                <span class="small text-muted">MongoDB Database: <strong class="text-dark font-monospace">{{ connection_status.db_name }}</strong></span>
+            {% endif %}
+        </div>
+        <div class="small">
+            <a href="{% url 'explain' %}" class="text-decoration-none"><i class="bi bi-speedometer"></i> View Query Performance & Index Stats &rarr;</a>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Metric Cards -->
+<div class="row g-3 mb-4">
+    <!-- Income Card -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm border-start border-success border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-semibold">Total Income</div>
+                        <h3 class="fw-bold text-success mb-0 mt-1">${{ totals.income_total|floatformat:2 }}</h3>
+                        <div class="small text-muted mt-1">{{ totals.income_count }} transaction(s)</div>
+                    </div>
+                    <div class="rounded-circle bg-success-subtle p-3 text-success fs-3">
+                        <i class="bi bi-arrow-down-left-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Card -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm border-start border-danger border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-semibold">Total Expenses</div>
+                        <h3 class="fw-bold text-danger mb-0 mt-1">${{ totals.expense_total|floatformat:2 }}</h3>
+                        <div class="small text-muted mt-1">{{ totals.expense_count }} transaction(s)</div>
+                    </div>
+                    <div class="rounded-circle bg-danger-subtle p-3 text-danger fs-3">
+                        <i class="bi bi-arrow-up-right-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Balance Card -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm border-start {% if totals.is_positive %}border-primary{% else %}border-warning{% endif %} border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-semibold">Net Balance</div>
+                        <h3 class="fw-bold {% if totals.is_positive %}text-primary{% else %}text-danger{% endif %} mb-0 mt-1">
+                            ${{ totals.balance|floatformat:2 }}
+                        </h3>
+                        <div class="small text-muted mt-1">
+                            {% if totals.is_positive %}
+                                <i class="bi bi-check2 text-success"></i> Cash positive
+                            {% else %}
+                                <i class="bi bi-exclamation-triangle text-danger"></i> Deficit spending
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="rounded-circle {% if totals.is_positive %}bg-primary-subtle text-primary{% else %}bg-warning-subtle text-warning{% endif %} p-3 fs-3">
+                        <i class="bi bi-wallet"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Rate Card -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm border-start border-info border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-uppercase text-muted small fw-semibold">Savings Rate</div>
+                        <h3 class="fw-bold text-info mb-0 mt-1">{{ totals.savings_rate }}%</h3>
+                        <div class="progress mt-2" style="height: 6px; width: 120px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ totals.savings_rate|default:0 }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="rounded-circle bg-info-subtle p-3 text-info fs-3">
+                        <i class="bi bi-piggy-bank"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts & Breakdown Row -->
+<div class="row g-4 mb-4">
+    <!-- Monthly Income vs Expense Trend -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>6-Month Income vs Expense Trend</h5>
+                <span class="badge bg-light text-dark border">MongoDB Aggregation Pipeline</span>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Expense Breakdown -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart text-primary me-2"></i>Top Expenses</h5>
+                <a href="{% url 'reports' %}" class="small text-decoration-none">Full Report &rarr;</a>
+            </div>
+            <div class="card-body">
+                {% if breakdown %}
+                    <ul class="list-group list-group-flush">
+                        {% for item in breakdown|slice:":5" %}
+                        <li class="list-group-item px-0 py-2 border-0">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-semibold small"><i class="bi bi-circle-fill me-1" style="color: {{ item.color }}; font-size: 0.6rem;"></i> {{ item.category_name }}</span>
+                                <span class="fw-bold small text-danger">${{ item.total_spent|floatformat:2 }}</span>
+                            </div>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ item.percentage }}%; background-color: {{ item.color }};"></div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-receipt fs-1 text-secondary opacity-50"></i>
+                        <p class="mt-2 mb-0 small">No expense transactions recorded this month yet.</p>
+                        <a href="{% url 'transaction_create' %}" class="btn btn-sm btn-outline-primary mt-2">Add First Expense</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Recent Transactions</h5>
+        <a href="{% url 'transactions' %}" class="btn btn-outline-primary btn-sm">View All Transactions &rarr;</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Date</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Note / Merchant</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recent_transactions %}
+                        {% for tx in recent_transactions %}
+                        <tr>
+                            <td class="ps-4 text-muted small font-monospace">
+                                {{ tx.transaction_date|date:"Y-m-d" }}
+                            </td>
+                            <td>
+                                {% if tx.type == 'income' %}
+                                    <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-arrow-down-left"></i> Income</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger"><i class="bi bi-arrow-up-right"></i> Expense</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-medium">{{ tx.category_name }}</span>
+                            </td>
+                            <td>
+                                <div>{{ tx.note|default:"—" }}</div>
+                                {% if tx.receipt_data.merchant %}
+                                    <small class="text-muted"><i class="bi bi-shop"></i> {{ tx.receipt_data.merchant }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-bold {% if tx.type == 'income' %}text-success{% else %}text-danger{% endif %} font-monospace">
+                                {% if tx.type == 'income' %}+{% else %}-{% endif %}${{ tx.amount_decimal|floatformat:2 }}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'transaction_update' tx.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="{% url 'transaction_delete' tx.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this transaction from MongoDB?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                No transactions recorded yet. Click <strong>Add Transaction</strong> to start!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Initialize Chart.js Trend Chart
+    const labels = {{ chart_labels_json|safe }};
+    const incomeData = {{ chart_income_json|safe }};
+    const expenseData = {{ chart_expense_json|safe }};
+
+    const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: incomeData,
+                    backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Expenses',
+                    data: expenseData,
+                    backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.raw.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(val) { return '$' + val; }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

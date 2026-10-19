@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-sm-10 col-md-7 col-lg-5 col-xl-4">
+        <div class="card border-0 shadow">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-primary-subtle d-inline-flex p-3 text-primary mb-2">
+                        <i class="bi bi-person-plus fs-2"></i>
+                    </div>
+                    <h3 class="fw-bold">Create Account</h3>
+                    <p class="text-muted small">Personal Expense Tracker &bull; MongoDB</p>
+                </div>
+
+                {% if form.errors %}
+                    <div class="alert alert-danger py-2 small">
+                        Please correct the errors indicated below.
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label fw-semibold small">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="form-text small text-muted">{{ field.help_text|safe }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm mt-2">
+                        Register Account
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top text-center">
+                    <div class="small text-muted">
+                        Already have an account? <a href="{% url 'login' %}" class="text-primary fw-semibold">Log In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Style Django auth fields to match Bootstrap form-control
+    document.querySelectorAll('input').forEach(input => {
+        if (!input.classList.contains('form-control') && input.type !== 'hidden') {
+            input.classList.add('form-control');
+        }
+    });
+</script>
+{% endblock %}

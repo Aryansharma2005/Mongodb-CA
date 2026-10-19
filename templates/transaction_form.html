@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h4 class="fw-bold mb-1">
+                            <i class="bi {% if action == 'Create' %}bi-plus-circle text-success{% else %}bi-pencil-square text-primary{% endif %} me-2"></i>
+                            {{ title }}
+                        </h4>
+                        <p class="text-muted small mb-0">Record financial details stored directly as MongoDB BSON documents</p>
+                    </div>
+                    <a href="{% url 'transactions' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body px-4 pb-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger py-2">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Core Fields Row 1: Type and Category -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.type.id_for_label }}" class="form-label fw-semibold">
+                                <i class="bi bi-tag text-muted me-1"></i> Transaction Type <span class="text-danger">*</span>
+                            </label>
+                            {{ form.type }}
+                            {% if form.type.errors %}
+                                <div class="text-danger small mt-1">{{ form.type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.category_id.id_for_label }}" class="form-label fw-semibold">
+                                <i class="bi bi-folder text-muted me-1"></i> Category <span class="text-danger">*</span>
+                            </label>
+                            {{ form.category_id }}
+                            {% if form.category_id.errors %}
+                                <div class="text-danger small mt-1">{{ form.category_id.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Core Fields Row 2: Amount and Date -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.amount.id_for_label }}" class="form-label fw-semibold">
+                                <i class="bi bi-currency-dollar text-muted me-1"></i> Amount ($) <span class="text-danger">*</span>
+                            </label>
+                            {{ form.amount }}
+                            {% if form.amount.errors %}
+                                <div class="text-danger small mt-1">{{ form.amount.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text small">Stored as high-precision <code>Decimal128</code> in MongoDB.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.transaction_date.id_for_label }}" class="form-label fw-semibold">
+                                <i class="bi bi-calendar-event text-muted me-1"></i> Date <span class="text-danger">*</span>
+                            </label>
+                            {{ form.transaction_date }}
+                            {% if form.transaction_date.errors %}
+                                <div class="text-danger small mt-1">{{ form.transaction_date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Note / Description -->
+                    <div class="mb-4">
+                        <label for="{{ form.note.id_for_label }}" class="form-label fw-semibold">
+                            <i class="bi bi-card-text text-muted me-1"></i> Note / Description
+                        </label>
+                        {{ form.note }}
+                        {% if form.note.errors %}
+                            <div class="text-danger small mt-1">{{ form.note.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Advanced MongoDB Document Features: Embedded Receipt & Tags -->
+                    <div class="card border border-light-subtle bg-light-subtle mb-4">
+                        <div class="card-header bg-transparent border-0 py-2 d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-dark">
+                                <i class="bi bi-layers text-primary me-1"></i> Advanced Document Features (Embedded Object & Array)
+                            </span>
+                            <span class="badge bg-secondary-subtle text-secondary small">MongoDB Demonstration</span>
+                        </div>
+                        <div class="card-body pt-1">
+                            <p class="small text-muted mb-3">
+                                Fulfills syllabus requirement for <em>Embedded Documents</em> (Receipt metadata) and <em>Array Data Models</em> (Tags).
+                            </p>
+                            
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">Merchant / Payee</label>
+                                    {{ form.merchant }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">Receipt Number</label>
+                                    {{ form.receipt_no }}
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">Payment Method</label>
+                                    {{ form.payment_method }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">Tags (comma-separated)</label>
+                                    {{ form.tags }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'transactions' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success px-4 shadow-sm">
+                            <i class="bi bi-check-circle me-1"></i> Save Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

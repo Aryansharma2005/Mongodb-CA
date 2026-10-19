@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Spending Insights{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-lightbulb text-warning me-2"></i>Smart Spending Insights</h2>
+        <p class="text-muted mb-0">Rule-based analytical pattern detection and spending optimizations</p>
+    </div>
+</div>
+
+<!-- Active Alerts Section -->
+{% if alerts %}
+<div class="mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-bell text-danger me-2"></i>Alerts & Budget Overruns</h5>
+    <div class="row g-3">
+        {% for alert in alerts %}
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm border-start border-{{ alert.type }} border-4">
+                <div class="card-body">
+                    <h6 class="fw-bold text-{{ alert.type }} mb-1">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ alert.title }}
+                    </h6>
+                    <p class="mb-0 text-muted small">{{ alert.message }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Pattern Insights Cards -->
+<div class="mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Key Patterns & Observations</h5>
+    <div class="row g-3">
+        {% if insights %}
+            {% for item in insights %}
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="badge bg-primary-subtle text-primary mb-2">Pattern</div>
+                        <h6 class="fw-bold text-dark mb-2">{{ item.title }}</h6>
+                        <p class="text-muted small mb-0">{{ item.text }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="card border-0 shadow-sm text-center py-4 text-muted">
+                    <i class="bi bi-check-circle fs-2 text-success mb-2"></i>
+                    <p class="mb-0">All spending appears balanced and within normal boundaries for this cycle!</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Month-over-Month Comparison Card -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-arrow-left-right text-info me-2"></i>Month-over-Month Expenditure Variance</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center g-3">
+            <div class="col-md-4 border-end">
+                <div class="text-muted small">Previous Month Expenses</div>
+                <h4 class="fw-bold mt-1 text-secondary">${{ previous_totals.expense_total|floatformat:2 }}</h4>
+            </div>
+            <div class="col-md-4 border-end">
+                <div class="text-muted small">Current Month Expenses</div>
+                <h4 class="fw-bold mt-1 text-danger">${{ current_totals.expense_total|floatformat:2 }}</h4>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Net Change</div>
+                <h4 class="fw-bold mt-1 {% if current_totals.expense_total > previous_totals.expense_total %}text-danger{% else %}text-success{% endif %}">
+                    {% if current_totals.expense_total > previous_totals.expense_total %}+{% endif %}
+                    ${{ current_totals.expense_total|floatformat:2 }}
+                </h4>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

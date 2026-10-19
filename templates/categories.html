@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Categories{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-tags text-primary me-2"></i>Categories</h2>
+        <p class="text-muted mb-0">Organize and budget income and expense classifications</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Add New Category Form -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
+            <div class="card-header bg-white border-0 pt-4 pb-2">
+                <h5 class="fw-bold mb-1"><i class="bi bi-plus-circle text-success me-2"></i>Add Category</h5>
+                <p class="text-muted small mb-0">Create custom category scoped to your account</p>
+            </div>
+            <div class="card-body pb-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.kind.id_for_label }}" class="form-label fw-semibold">Category Kind <span class="text-danger">*</span></label>
+                        {{ form.kind }}
+                        {% if form.kind.errors %}
+                            <div class="text-danger small mt-1">{{ form.kind.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.budget_monthly.id_for_label }}" class="form-label fw-semibold">Monthly Budget Target ($)</label>
+                        {{ form.budget_monthly }}
+                        {% if form.budget_monthly.errors %}
+                            <div class="text-danger small mt-1">{{ form.budget_monthly.errors.0 }}</div>
+                        {% endif %}
+                        <div class="form-text small">Used to compute spending limits & alert notifications.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 shadow-sm">
+                        <i class="bi bi-check-lg me-1"></i> Save Category
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Existing Categories List -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Your Categories</h5>
+                <span class="badge bg-secondary-subtle text-secondary">{{ categories|length }} total</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Category Name</th>
+                                <th>Kind</th>
+                                <th class="text-end">Monthly Budget</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if categories %}
+                                {% for cat in categories %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold text-dark">
+                                        <i class="bi bi-folder2 text-primary me-2"></i> {{ cat.name }}
+                                    </td>
+                                    <td>
+                                        {% if cat.kind == 'income' %}
+                                            <span class="badge bg-success-subtle text-success border border-success">Income</span>
+                                        {% elif cat.kind == 'expense' %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger">Expense</span>
+                                        {% else %}
+                                            <span class="badge bg-primary-subtle text-primary border border-primary">Both</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end font-monospace">
+                                        {% if cat.budget_monthly_decimal > 0 %}
+                                            <span class="fw-semibold text-dark">${{ cat.budget_monthly_decimal|floatformat:2 }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">Not set</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'category_update' cat.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" action="{% url 'category_delete' cat.id %}" class="d-inline" onsubmit="return confirm('Delete category \'{{ cat.name }}\'? Transactions referencing this category will prevent deletion.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        No categories defined yet. Use the form to create your first category!
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

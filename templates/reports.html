@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Aggregations{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-7">
+        <h2 class="fw-bold mb-1"><i class="bi bi-pie-chart text-primary me-2"></i>Reports & Aggregations</h2>
+        <p class="text-muted mb-0">Powered by MongoDB Aggregation Pipeline (<code>$match</code>, <code>$group</code>, <code>$lookup</code>, <code>$sort</code>)</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <!-- Date Selector Form -->
+        <form method="get" class="d-flex justify-content-md-end gap-2">
+            <select name="month" class="form-select form-select-sm w-auto">
+                {% for m_num, m_name in months %}
+                    <option value="{{ m_num }}" {% if m_num == selected_month %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" class="form-select form-select-sm w-auto">
+                {% for y in years %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-clockwise"></i> View Report
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Monthly Totals Overview -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-success border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-semibold">Income for {{ totals.month_name }}</div>
+                <h3 class="fw-bold text-success mt-1 mb-0">${{ totals.income_total|floatformat:2 }}</h3>
+                <small class="text-muted">{{ totals.income_count }} record(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-danger border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-semibold">Expenses for {{ totals.month_name }}</div>
+                <h3 class="fw-bold text-danger mt-1 mb-0">${{ totals.expense_total|floatformat:2 }}</h3>
+                <small class="text-muted">{{ totals.expense_count }} record(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start {% if totals.is_positive %}border-primary{% else %}border-warning{% endif %} border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-semibold">Net Savings for {{ totals.month_name }}</div>
+                <h3 class="fw-bold {% if totals.is_positive %}text-primary{% else %}text-danger{% endif %} mt-1 mb-0">
+                    ${{ totals.balance|floatformat:2 }}
+                </h3>
+                <small class="text-muted">Savings Rate: {{ totals.savings_rate }}%</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visual Chart and Breakdown Table -->
+<div class="row g-4 mb-4">
+    <!-- Chart.js Doughnut -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="fw-bold mb-0">Category Expense Distribution</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                {% if breakdown %}
+                    <div style="height: 280px; width: 100%; max-width: 320px;">
+                        <canvas id="categoryDoughnutChart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-pie-chart fs-1 text-secondary opacity-50"></i>
+                        <p class="mt-2 mb-0 small">No expense data found for this period.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown Table -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Category Breakdown Table</h5>
+                <span class="badge bg-light text-dark border"><code>$lookup</code> joined</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Category</th>
+                                <th>Count</th>
+                                <th class="text-end">Total Spent</th>
+                                <th class="text-end">Share</th>
+                                <th class="text-end pe-4">Budget Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if breakdown %}
+                                {% for item in breakdown %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold">
+                                        <i class="bi bi-square-fill me-1" style="color: {{ item.color }};"></i>
+                                        {{ item.category_name }}
+                                    </td>
+                                    <td>{{ item.count }}</td>
+                                    <td class="text-end font-monospace fw-bold text-danger">
+                                        ${{ item.total_spent|floatformat:2 }}
+                                    </td>
+                                    <td class="text-end font-monospace">
+                                        {{ item.percentage }}%
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        {% if item.budget > 0 %}
+                                            {% if item.is_over_budget %}
+                                                <span class="badge bg-danger">Over Budget (${{ item.budget|floatformat:0 }})</span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success border border-success">Within Budget (${{ item.budget|floatformat:0 }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted small">No target</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        No expense records found for {{ totals.month_name }}.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MongoDB Aggregation Pipeline Showcase Callout (CSE494 Viva Evidence) -->
+<div class="card border-0 shadow-sm bg-body-tertiary mb-4">
+    <div class="card-header bg-transparent border-0 pt-3 pb-1">
+        <h6 class="fw-bold text-dark font-monospace mb-0">
+            <i class="bi bi-braces text-primary me-2"></i>Under the Hood: Executed MongoDB Aggregation Pipeline
+        </h6>
+    </div>
+    <div class="card-body pt-2">
+        <pre class="bg-dark text-light p-3 rounded font-monospace small mb-0"><code>db.transactions.aggregate([
+  // 1. Filter by owner user, expense type, and month date range
+  { $match: {
+      user_id: "{{ user.id }}",
+      type: "expense",
+      transaction_date: {
+        $gte: ISODate("{{ selected_year }}-{{ selected_month|stringformat:'02d' }}-01T00:00:00Z"),
+        $lt: ISODate(...)
+      }
+  }},
+  // 2. Group by category and compute sum of Decimal128 amount
+  { $group: {
+      _id: "$category_id",
+      totalSpent: { $sum: "$amount" },
+      count: { $sum: 1 }
+  }},
+  // 3. Join with categories collection for referenced category name
+  { $lookup: {
+      from: "categories",
+      localField: "_id",
+      foreignField: "_id",
+      as: "category_info"
+  }},
+  // 4. Sort descending by highest expense
+  { $sort: { totalSpent: -1 } }
+])</code></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const catLabels = {{ cat_labels_json|safe }};
+    const catAmounts = {{ cat_amounts_json|safe }};
+    const catColors = {{ cat_colors_json|safe }};
+
+    if (catLabels && catLabels.length > 0) {
+        const ctxDoughnut = document.getElementById('categoryDoughnutChart').getContext('2d');
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    data: catAmounts,
+                    backgroundColor: catColors,
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: $${context.raw.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
