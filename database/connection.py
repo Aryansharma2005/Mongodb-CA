@@ -11,7 +11,20 @@ load_dotenv(BASE_DIR / ".env")
 
 logger = logging.getLogger(__name__)
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+MONGODB_URI = os.getenv("MONGODB_URI", "")
+if not MONGODB_URI:
+    _u = os.getenv("MONGODB_USERNAME")
+    _p = os.getenv("MONGODB_PASSWORD")
+    if _u and _p:
+        MONGODB_URI = f"mongodb+srv://{_u}:{_p}@expensetracker.q0p0o6m.mongodb.net/?retryWrites=true&w=majority"
+    else:
+        MONGODB_URI = "mongodb://localhost:27017/"
+
+# Ensure retryWrites option is included for Atlas
+if "mongodb+srv://" in MONGODB_URI and "retryWrites" not in MONGODB_URI:
+    sep = "&" if "?" in MONGODB_URI else "/?"
+    MONGODB_URI = f"{MONGODB_URI}{sep}retryWrites=true&w=majority"
+
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "expense_tracker_db")
 
 _client = None
@@ -19,7 +32,7 @@ _db = None
 _is_mock = False
 
 
-def init_connection(force_mock: bool = False, timeout_ms: int = 3000):
+def init_connection(force_mock: bool = False, timeout_ms: int = 8000):
     """
     Initializes and caches the MongoDB client and database.
     If the real MongoDB server (Atlas / local) is unreachable or force_mock is True,

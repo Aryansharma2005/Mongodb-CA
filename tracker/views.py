@@ -52,6 +52,12 @@ def register_view(request):
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # Persist user credentials in MongoDB Atlas
+            try:
+                from database.mongo_auth import sync_user_to_mongo
+                sync_user_to_mongo(user)
+            except Exception:
+                pass
             # Initialize default categories for the new user in MongoDB
             init_default_categories(str(user.id))
             login(request, user)

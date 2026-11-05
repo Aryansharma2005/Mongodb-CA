@@ -1,5 +1,6 @@
 """
 Django settings for Personal Expense Tracker project.
+Optimized for Serverless Vercel Deployment using Pure MongoDB.
 """
 import os
 from pathlib import Path
@@ -11,14 +12,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-expense-tracker-mongo-cse494-secret-key-2026-prod")
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
-allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,.vercel.app")
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
+if ".vercel.app" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".vercel.app")
 if "testserver" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("testserver")
 if DEBUG and "*" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("*")
+
+# CSRF Trusted Origins for Vercel
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.vercel.app",
+    "https://*.now.sh",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if csrf_env:
+    CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in csrf_env.split(",") if origin.strip()])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -32,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -60,15 +75,31 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Relational Database for Django Authentication & Sessions
-# Note: As outlined in Section 2 of the specification, Django auth uses SQLite
-# while all core domain data (categories, transactions, aggregations) lives directly in MongoDB via PyMongo.
+# Pure MongoDB Architecture:
+# Ephemeral SQLite in /tmp handles Django internal requirements (e.g. contenttypes, model checks).
+# All user credentials, sessions, and expense data live persistently in MongoDB Atlas.
+if os.getenv("VERCEL"):
+    db_path = Path("/tmp") / "db.sqlite3"
+else:
+    db_path = BASE_DIR / "db.sqlite3"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": db_path,
     }
 }
+
+# Cryptographically signed cookie sessions - eliminates database session writes entirely
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 1209600
+
+# Dual Authentication Backends: checks MongoDB Atlas users collection first
+AUTHENTICATION_BACKENDS = [
+    "database.mongo_auth.MongoAuthBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -84,6 +115,16 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
