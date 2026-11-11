@@ -40,6 +40,24 @@ def seed_database(username="demo", password="password123"):
     else:
         print(f" [i] Found existing Django auth user: '{username}'")
 
+    db = get_db()
+    users_col = db["users"]
+    users_col.update_one(
+        {"username": username},
+        {"$set": {
+            "username": username,
+            "email": f"{username}@example.com",
+            "password": user.password,
+            "django_id": int(user.id),
+            "updated_at": datetime.utcnow()
+        },
+        "$setOnInsert": {
+            "created_at": datetime.utcnow()
+        }},
+        upsert=True
+    )
+    print(f" [+] Ensured MongoDB 'users' document for '{username}'")
+
     user_id = str(user.id)
     db = get_db()
     categories_col = get_categories_collection(db)

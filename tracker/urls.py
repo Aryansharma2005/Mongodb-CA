@@ -17,4 +17,5 @@ urlpatterns = [
     path("insights/", views.insights_view, name="insights"),
     path("explain/", views.explain_view, name="explain"),
     path("register/", views.register_view, name="register"),
+    path("seed/", views.seed_view, name="seed"),
 ]

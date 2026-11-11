@@ -382,3 +382,40 @@ def explain_view(request):
         "is_mock": is_mock,
         "db_info": check_connection()
     })
+
+
+def seed_view(request):
+    """
+    Seeds sample demo data into MongoDB Atlas across users, categories, and transactions.
+    """
+    try:
+        from database.seed_data import seed_database
+        from database.connection import get_db
+        username = request.GET.get("username", "demo")
+        password = request.GET.get("password", "password123")
+        seed_database(username, password)
+        db = get_db()
+        cat_count = db["categories"].count_documents({})
+        tx_count = db["transactions"].count_documents({})
+        user_count = db["users"].count_documents({})
+        return JsonResponse({
+            "status": "success",
+            "message": f"Database successfully seeded for user '{username}'!",
+            "database": db.name,
+            "counts": {
+                "users": user_count,
+                "categories": cat_count,
+                "transactions": tx_count
+            },
+            "credentials": {
+                "username": username,
+                "password": password
+            },
+            "dashboard_url": "/"
+        })
+    except Exception as exc:
+        return JsonResponse({
+            "status": "error",
+            "error": str(exc)
+        }, status=500)
+
