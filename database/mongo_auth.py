@@ -120,6 +120,8 @@ def sync_user_to_mongo(user):
         logger.error(f"Failed to sync user '{user.username}' to MongoDB: {exc}")
 
 
+_initialized = False
+
 def init_mongo_auth():
     """
     Runs during application boot.
@@ -127,6 +129,11 @@ def init_mongo_auth():
     2. Syncs existing users from MongoDB Atlas into SQLite.
     3. Ensures the default 'demo' user exists in both MongoDB and SQLite.
     """
+    global _initialized
+    if _initialized:
+        return
+    _initialized = True
+
     try:
         from django.core.management import call_command
         call_command("migrate", interactive=False, verbosity=0)

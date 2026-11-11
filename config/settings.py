@@ -78,7 +78,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Pure MongoDB Architecture:
 # Ephemeral SQLite in /tmp handles Django internal requirements (e.g. contenttypes, model checks).
 # All user credentials, sessions, and expense data live persistently in MongoDB Atlas.
-if os.getenv("VERCEL"):
+if os.path.exists("/tmp") and (
+    os.getenv("VERCEL")
+    or os.getenv("VERCEL_ENV")
+    or str(BASE_DIR).startswith("/var/")
+    or not os.access(BASE_DIR, os.W_OK)
+):
     db_path = Path("/tmp") / "db.sqlite3"
 else:
     db_path = BASE_DIR / "db.sqlite3"
